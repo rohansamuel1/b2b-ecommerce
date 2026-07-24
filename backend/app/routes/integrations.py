@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session
 from app.auth import get_current_user, require_role
 from app.database import get_db
 from app import models, schemas
+from app import github_mcp_service
 
 router = APIRouter(prefix="/integrations", tags=["Integrations"])
 
@@ -20,7 +21,33 @@ TOOL_CATALOG = [
 
 @router.get("/mcp")
 def mcp_registry(current_user: models.User = Depends(require_role(["admin"]))):
-    return {"protocol":"MCP-compatible local gateway","mode":"demo","tools":TOOL_CATALOG,"live_providers":[],"note":"Every listed tool executes locally. External marketplace and email results are clearly marked demo data."}
+    github = github_mcp_service.status()
+    return {"protocol":"MCP-compatible local gateway","mode":"hybrid","tools":TOOL_CATALOG,"live_providers":[{"name":"github","official_mcp":True,**github}],"note":"Marketplace and email results remain clearly marked demo data; GitHub uses the official remote MCP server in read-only mode."}
+
+
+@router.get("/github/status")
+def github_status(current_user: models.User = Depends(require_role(["admin"]))):
+    return github_mcp_service.status()
+
+
+@router.get("/github/files")
+def github_file(path: str = "README.md", ref: str = "refs/heads/main", current_user: models.User = Depends(get_current_user)):
+    return github_mcp_service.call("get_file_contents", {"path": path, "ref": ref})
+
+
+@router.get("/github/issues")
+def github_issues(state: str = "OPEN", current_user: models.User = Depends(get_current_user)):
+    return github_mcp_service.call("list_issues", {"state": state, "perPage": 20})
+
+
+@router.get("/github/actions")
+def github_actions(current_user: models.User = Depends(get_current_user)):
+    return github_mcp_service.call("actions_list", {"method": "list_workflow_runs", "per_page": 20})
+
+
+@router.get("/github/search")
+def github_search(query: str, current_user: models.User = Depends(get_current_user)):
+    return github_mcp_service.call("search_code", {"query": query, "perPage": 20})
 
 
 def _offers(db: Session, product_id: int):

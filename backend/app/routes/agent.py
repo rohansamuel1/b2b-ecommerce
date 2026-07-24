@@ -8,6 +8,7 @@ from app.ai_assistant import answer_question
 from app.neo4j_service import sync_graph, verify_connectivity
 from app.auth import get_current_user, require_role
 from app import models
+from app import github_mcp_service
 
 router = APIRouter(prefix="/agent", tags=["LangChain Agent"])
 
@@ -55,6 +56,7 @@ def agent_status(
         "openai_configured": bool(os.getenv("OPENAI_API_KEY")),
         "model": os.getenv("OPENAI_MODEL", "gpt-4o-mini"),
         "framework": "LangChain",
+        "github_mcp": github_mcp_service.status(),
         "tools": [
             "search_products",
             "get_product",
@@ -73,6 +75,10 @@ def agent_status(
             "get_analytics_insights",
             "compare_marketplace_offers",
             "queue_support_email",
+            "get_github_file",
+            "get_github_issues",
+            "search_github_code",
+            "get_github_actions",
         ],
         "architecture": {
             "planner": "compiled LangGraph workflow",
@@ -80,7 +86,7 @@ def agent_status(
             "memory": "persistent SQL user memory",
             "rag": "product document retrieval",
             "knowledge_graph": "Neo4j optional",
-            "mcp": "working local demo gateway; optional live providers",
+            "mcp": "local demo gateway plus official read-only GitHub MCP provider",
         },
     }
 

@@ -14,7 +14,7 @@ from langchain_openai import ChatOpenAI
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
-from app import models
+from app import models, github_mcp_service
 from app.agent_workflow import run_workflow
 
 
@@ -529,6 +529,34 @@ def build_commerce_tools(
         item=models.EmailOutbox(recipient=recipient,subject=subject[:200],body=body[:4000],related_order_id=order_id); db.add(item); db.commit(); db.refresh(item)
         return _dump({"queued":True,"outbox_id":item.id,"recipient":recipient,"status":item.status,"demo":True})
 
+    @tool
+    def get_github_file(path: str = "README.md", ref: str = "refs/heads/main") -> str:
+        """Read a file from the configured repository through GitHub's official read-only MCP server."""
+        if not github_mcp_service.configured(): return "GitHub MCP is not configured."
+        try: return _dump(github_mcp_service.call("get_file_contents", {"path": path, "ref": ref}))
+        except Exception as exc: return f"GitHub MCP file read failed: {exc}"
+
+    @tool
+    def get_github_issues(state: str = "OPEN", limit: int = 10) -> str:
+        """List issues from the configured repository through GitHub MCP."""
+        if not github_mcp_service.configured(): return "GitHub MCP is not configured."
+        try: return _dump(github_mcp_service.call("list_issues", {"state": state.upper(), "perPage": min(max(limit, 1), 50)}))
+        except Exception as exc: return f"GitHub MCP issue read failed: {exc}"
+
+    @tool
+    def search_github_code(query: str, limit: int = 10) -> str:
+        """Search code only within the configured repository through GitHub MCP."""
+        if not github_mcp_service.configured(): return "GitHub MCP is not configured."
+        try: return _dump(github_mcp_service.call("search_code", {"query": query, "perPage": min(max(limit, 1), 50)}))
+        except Exception as exc: return f"GitHub MCP code search failed: {exc}"
+
+    @tool
+    def get_github_actions() -> str:
+        """List recent workflow runs through GitHub's official read-only MCP server."""
+        if not github_mcp_service.configured(): return "GitHub MCP is not configured."
+        try: return _dump(github_mcp_service.call("actions_list", {"method": "list_workflow_runs", "per_page": 20}))
+        except Exception as exc: return f"GitHub MCP Actions read failed: {exc}"
+
     tools = [
         search_products,
         get_product,
@@ -550,6 +578,8 @@ def build_commerce_tools(
     ]
     if graph_context:
         tools.append(get_retrieved_graph_context)
+    if github_mcp_service.configured():
+        tools.extend([get_github_file, get_github_issues, search_github_code, get_github_actions])
     return tools
 
 

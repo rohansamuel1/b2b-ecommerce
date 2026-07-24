@@ -117,6 +117,7 @@ function AIAssistant() {
             <span><Workflow size={14} aria-hidden="true" /> {status?.tools?.length || 15} tools</span>
             <span><Bot size={14} aria-hidden="true" /> {status?.openai_configured ? status.model : "local fallback"}</span>
             <span><Database size={14} aria-hidden="true" /> {status?.neo4j?.connected ? "Neo4j connected" : "Neo4j optional"}</span>
+            <span><Workflow size={14} aria-hidden="true" /> {status?.github_mcp?.connected ? "GitHub MCP connected" : "GitHub MCP optional"}</span>
           </div>
           {statusError && <p className="assistant-status-error">{statusError}</p>}
         </div>
